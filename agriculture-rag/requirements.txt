@@ -1,0 +1,16 @@
+streamlit
+langchain
+langchain-community
+pypdf
+pdf2image
+pillow
+python-dotenv
+openai
+sentence-transformers
+faiss-cpu
+transformers
+torch
+tiktoken
+pymupdf
+numpy
+tqdm
