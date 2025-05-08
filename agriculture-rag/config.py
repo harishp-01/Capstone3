@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
@@ -35,13 +36,22 @@ class Config:
     CACHE_DIR = ".cache"
     UPLOAD_DIR = "data/uploads"
     LOG_DIR = "logs"
+
+    @property
+    def VECTOR_STORE_PATH(self):
+        """Get the full path to the vector store"""
+        path = os.path.join("data", "vector_store")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
     
     @staticmethod
     def setup():
         """Initialize required directories with error handling"""
         try:
+            """Initialize required directories"""
             os.makedirs("data/uploads", exist_ok=True)
             os.makedirs("logs", exist_ok=True)
-            os.makedirs(Config.CACHE_DIR, exist_ok=True)
+            # Ensure vector store directory exists by accessing the property
+            _ = Config().VECTOR_STORE_PATH
         except Exception as e:
             print(f"Initialization error: {str(e)}")

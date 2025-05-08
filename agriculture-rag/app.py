@@ -82,8 +82,8 @@ with st.sidebar:
                     vector_store.add_texts(text_chunks)
                     vector_store.add_images(images)
                     
-                    # Save vector store
-                    vector_store.save(vector_store_path)
+                    # Save vector store - FIXED: Call the property to get the string path
+                    vector_store.save(Config().VECTOR_STORE_PATH)
                     
                     st.success("PDF processed successfully!")
                     
@@ -93,7 +93,7 @@ with st.sidebar:
                         st.image(
                             preview_image,
                             caption="First page preview",
-                            use_column_width=True
+                            use_container_width=True
                         )
                 else:
                     # Process image
@@ -114,10 +114,10 @@ with st.sidebar:
                     
                     # Add to vector store
                     vector_store.add_images([image_data])
-                    vector_store.save(vector_store_path)
+                    vector_store.save(Config().VECTOR_STORE_PATH)  # FIXED: Call the property
                     
                     st.success("Image processed successfully!")
-                    st.image(image, caption="Uploaded image", use_column_width=True)
+                    st.image(image, caption="Uploaded image", use_container_width=True)
             
             except Exception as e:
                 st.error(f"Error processing document: {str(e)}")

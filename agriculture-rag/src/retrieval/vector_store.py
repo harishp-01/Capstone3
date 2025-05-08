@@ -95,8 +95,13 @@ class VectorStore:
             return []
     
     def save(self, base_path: str):
-        """Save vector store to disk"""
+        """Save vector store to disk with path validation"""
         try:
+            # Convert property to string if needed
+            if hasattr(base_path, '__class__') and isinstance(base_path, property):
+                base_path = base_path.fget()
+                
+            logger.info(f"Saving vector store to: {base_path}")
             os.makedirs(os.path.dirname(base_path), exist_ok=True)
             
             # Save text index and metadata
@@ -111,7 +116,7 @@ class VectorStore:
                 with open(f"{base_path}_image_meta.pkl", "wb") as f:
                     pickle.dump(self.image_metadata, f)
             
-            logger.info(f"Saved vector store to {base_path}")
+            logger.info(f"Successfully saved vector store to {base_path}")
         except Exception as e:
             logger.error(f"Error saving vector store: {str(e)}")
             raise
