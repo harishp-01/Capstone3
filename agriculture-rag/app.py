@@ -1,6 +1,8 @@
+import os
+import warnings
+from contextlib import suppress
 import streamlit as st
 from PIL import Image
-import os
 from config import Config
 from src.document_processor.pdf_processor import PDFProcessor
 from src.embeddings.text_embeddings import TextEmbedder
@@ -10,25 +12,32 @@ from src.retrieval.rag_pipeline import RAGPipeline
 from src.utils.helpers import save_uploaded_file, is_pdf, extract_first_page_as_image
 from src.utils.logger import get_logger
 
+# Suppress specific PyTorch/Streamlit warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="torch._classes")
+
 # Initialize configuration and logging
-Config.setup()
+config = Config()
+config.setup()
 logger = get_logger(__name__)
 
 # Initialize components
-text_embedder = TextEmbedder()
-image_embedder = ImageEmbedder()
-vector_store = VectorStore()
-pdf_processor = PDFProcessor()
+with suppress(RuntimeError):  # Suppress the torch._classes error
+    text_embedder = TextEmbedder()
+    image_embedder = ImageEmbedder()
+    vector_store = VectorStore()
 
-# Load existing vector store if available
-vector_store_path = Config.VECTOR_STORE_PATH
-if os.path.exists(f"{vector_store_path}_text.faiss"):
-    vector_store.load(vector_store_path)
-else:
-    vector_store.initialize_indexes()
+    # Handle vector store loading with error recovery
+    if not vector_store.load(config.VECTOR_STORE_PATH):
+        logger.warning("Could not load vector store, initializing empty")
+        vector_store.initialize_indexes()
 
-# Initialize RAG pipeline
-rag_pipeline = RAGPipeline(vector_store)
+    pdf_processor = PDFProcessor()
+    rag_pipeline = RAGPipeline(
+        vector_store=vector_store,
+        text_embedder=text_embedder
+    )
+    
 
 # Streamlit UI Configuration
 st.set_page_config(
@@ -139,22 +148,22 @@ if prompt := st.chat_input("Ask about agriculture documents..."):
     with st.chat_message("assistant"):
         with st.spinner("Analyzing documents..."):
             try:
-                response = rag_pipeline.generate_response(prompt, text_embedder)
+                response = rag_pipeline.generate_response(prompt)
                 
                 st.markdown(response["answer"])
                 
                 if response["source_documents"]:
                     with st.expander("View source documents"):
                         for doc in response["source_documents"]:
-                            st.write(f"**Page {doc['metadata']['page_num'] + 1}**")
-                            st.text(doc["text"][:300] + ("..." if len(doc["text"]) > 300 else ""))
+                            st.write(f"**Page {doc.metadata['page_num'] + 1}**")
+                            st.text(doc.page_content[:300] + ("..." if len(doc.page_content) > 300 else ""))
                             st.divider()
             
             except Exception as e:
                 error_msg = "Sorry, I encountered an error processing your request."
                 st.error(error_msg)
                 logger.error(f"Chat error: {str(e)}")
-                response = {"answer": error_msg}
+                response = {"answer": error_msg, "source_documents": []}
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response["answer"]})

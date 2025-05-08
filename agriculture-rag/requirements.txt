@@ -1,6 +1,8 @@
 streamlit
 langchain
 langchain-community
+langchain-openai
+langchain-core
 pypdf
 pdf2image
 pillow

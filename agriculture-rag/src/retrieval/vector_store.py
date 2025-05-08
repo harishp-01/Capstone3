@@ -97,11 +97,15 @@ class VectorStore:
     def save(self, base_path: str):
         """Save vector store to disk"""
         try:
+            os.makedirs(os.path.dirname(base_path), exist_ok=True)
+            
+            # Save text index and metadata
             if self.text_index is not None:
                 faiss.write_index(self.text_index, f"{base_path}_text.faiss")
                 with open(f"{base_path}_text_meta.pkl", "wb") as f:
                     pickle.dump(self.text_metadata, f)
             
+            # Save image index and metadata
             if self.image_index is not None:
                 faiss.write_index(self.image_index, f"{base_path}_image.faiss")
                 with open(f"{base_path}_image_meta.pkl", "wb") as f:
@@ -113,22 +117,37 @@ class VectorStore:
             raise
     
     def load(self, base_path: str) -> bool:
-        """Load vector store from disk"""
+        """Load vector store from disk with error handling"""
         try:
-            if os.path.exists(f"{base_path}_text.faiss"):
-                self.text_index = faiss.read_index(f"{base_path}_text.faiss")
+            # Clear existing data
+            self.text_index = None
+            self.image_index = None
+            self.text_metadata = []
+            self.image_metadata = []
+            
+            # Load text index if exists
+            text_index_path = f"{base_path}_text.faiss"
+            if os.path.exists(text_index_path):
+                self.text_index = faiss.read_index(text_index_path)
                 with open(f"{base_path}_text_meta.pkl", "rb") as f:
                     self.text_metadata = pickle.load(f)
             
-            if os.path.exists(f"{base_path}_image.faiss"):
-                self.image_index = faiss.read_index(f"{base_path}_image.faiss")
+            # Load image index if exists
+            image_index_path = f"{base_path}_image.faiss"
+            if os.path.exists(image_index_path):
+                self.image_index = faiss.read_index(image_index_path)
                 with open(f"{base_path}_image_meta.pkl", "rb") as f:
                     self.image_metadata = pickle.load(f)
             
-            logger.info(f"Loaded vector store from {base_path}")
-            return True
+            if self.text_index or self.image_index:
+                logger.info(f"Loaded vector store from {base_path}")
+                return True
+            return False
+            
         except Exception as e:
             logger.error(f"Error loading vector store: {str(e)}")
+            # If loading fails, reinitialize empty indexes
+            self.initialize_indexes()
             return False
     
     def get_stats(self) -> Dict:
